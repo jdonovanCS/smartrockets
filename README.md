@@ -1,5 +1,9 @@
 # smartrockets
 
-Written in Python. Uses a genetic algorithm to get the rockets from one point to another based on the rules of the system.
+Example file of a simple genetic algorithm against a simple novelty search and random search on a more complex environment goal than the forked repo.
+
+![Image of Completed Goal in Novelty Search](https://github.com/jdonovanCS/smartrockets/blob/master/smart_rockets_finished.PNG)
+
+Soon: Image of interesting behavior from novelty search.
 
 Uses tkinter to render.
