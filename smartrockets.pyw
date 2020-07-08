@@ -6,6 +6,22 @@ from tkinter import *
 
 random.seed(time.time())
 
+session = 0
+if not os.path.exists('smartrockets.log'):
+    with open('smartrockets.log', 'a') as log:
+        log.write('type, generation, position, start, goal, hit_target, iteration, success, session')
+        
+with open('smartrockets.log', 'r') as log:
+    for line in log.readlines():
+        if len(line) > 1:
+            session = int(line.split(',')[-1]) + 1
+
+# TODO: improve the log function for rockets
+# TODO: make type an attribute of rockets
+# TODO: calcNovelty as a function of calcFit for each rocket
+# TODO: make rockets one array 
+# TODO: replace reset canvas function by just using rockets inherent reset function
+# TODO: get rid of references to global variables
 
 class rocket:
     startX = 250
@@ -26,6 +42,7 @@ class rocket:
         self.sideForce = 270
         self.fitness = 0
         self.novelty = 0
+        self.type = 'standard'
 
         # These are the two points of the line associated with the rocket, bottom and top
         self.x0 = rocket.startX
@@ -83,6 +100,9 @@ class rocket:
             self.hit_target = True
     
     def calcFit(self):
+        if self.novelty > 0:
+            self.fitness = self.novelty
+            return self.novelty ** 2
         self.fitness = math.sqrt((self.startX - self.x1) ** 2 + (self.startY - self.y1) ** 2)
         self.fitness = self.fitness - (math.sqrt((endPoint[0] - self.x1) ** 2 + (endPoint[1] - self.y1) ** 2))
         self.fitness = math.floor(self.fitness)
@@ -95,9 +115,6 @@ class rocket:
         
         return self.fitness ** 2
 
-    
-    def calcNovelty(self):
-        return self.novelty ** 2
     
     def reset(self, c, dna):
         self.stuck = False
@@ -114,6 +131,48 @@ class rocket:
         self.y0 = rocket.startY
         self.x1 = rocket.startX
         self.y1 = self.y0 + rocket.height
+    
+    def log(self):
+        with open('smartrockets.log', 'a') as log:
+            log.write('{}, {}, {}, {}, {}, {}, {}, {}, {}\n'.format(self.type, generationCounter, (self.x1, self.y1), (self.startX, self.startY), (endPoint[0], endPoint[1]), self.hit_target, self.fitness, successful.values(), session))
+
+class window:
+
+    def __init__(self):
+        self.generationCounter = 1
+        self.rockets = []
+        self.success = False
+        self.genePool = []
+
+        self.popSize = 20
+        self.lifespan = 550         
+
+        self.numSuccesses = 0
+
+        self.endPoint = (50, 50)
+    
+        self.canvas = Canvas(root, height = 500, width = 500, bg = 'black')
+        self.generationText = self.canvas.create_text(10, 10, anchor = 'nw', fill = 'white', font = 20)
+        self.typeText = self.canvas.create_text(200, 10, anchor = 'nw', fill = 'white', font = 20)
+        self.successText = self.canvas.create_text(200, 400, anchor = 'nw', fill = 'green', font = 20)
+        self.canvas.itemconfig(self.generationText, text = "generation 1")
+        self.canvas.itemconfig(self.typeText, text = "standard")
+
+        self.visualEND = canvas.create_rectangle(endPoint[0] - 10, endPoint[1] - 10, endPoint[0] + 10, endPoint[1] + 10, fill = "green")
+
+        # original
+        # visualObstacle = canvas.create_rectangle(150, 250, 350, 240, fill = "white")
+        # visualObstacle2 = canvas.create_rectangle(50, 150, 150, 140, fill = "white")
+        # visualObstacle3 = canvas.create_rectangle(350, 150, 450, 140, fill = "white")
+        # visualObstacle4 = canvas.create_rectangle(50, 360, 150, 350, fill = "white")
+        # visualObstacle5 = canvas.create_rectangle(350, 360, 450, 350, fill = "white")
+
+        # custom
+        self.visualObstacle = canvas.create_rectangle(150, 250, 350, 240, fill = "white")
+        self.visualObstacle2 = canvas.create_rectangle(0, 100, 150, 110, fill = "white")
+        self.visualObstacle3 = canvas.create_rectangle(140, 110, 150, 250, fill = "white")
+        # visualObstacle4 = canvas.create_rectangle(350, 360, 450, 350, fill = "white")
+
 
 def calcNovelty(rockets):
     novelties = {}
@@ -131,6 +190,86 @@ def calcNovelty(rockets):
     
     return
 
+def initialize():
+    
+    global generationCounter
+    global success
+    global rockets
+    global rocketsNov
+    global rocketsRand
+    global genePool
+    global genePoolNov
+    global genePoolRand
+
+    generationCounter = 1
+    success = False
+    rockets = []
+    rocketsNov = []
+    rocketsRand = []
+    genePool = []
+    genePoolNov = []
+    genePoolRand = []
+
+    # original
+    # endPoint = (250, 50)
+
+    # custom
+    
+
+    for i in range(popSize):
+        newDNA = []
+        newDNANov = []
+        newDNARand = []
+
+        for j in range(lifespan):
+            newDNA.append(random.uniform(-10, 10))
+            newDNANov.append(random.uniform(-10, 10))
+            newDNARand.append(random.uniform(-10,10))
+
+        newRocket = rocket(canvas, newDNA)
+        newRocket.type = 'standard'
+        newRocketNov = rocket(canvasNov, newDNANov)
+        newRocketNov.type = 'novelty'
+        newRocketRand = rocket(canvasRand, newDNARand)
+        newRocketRand.type = 'random'
+        rockets.append(newRocket)
+        rocketsNov.append(newRocketNov)
+        rocketsRand.append(newRocketRand)
+
+def reset_canvas():
+    global canvas
+    global canvasNov
+    global canvasRand
+
+    global rockets
+    global rocketsNov
+    global rocketsRand
+    
+    global popSize
+
+    canvasRand.itemconfig(successTextRand, text = '')
+    canvasNov.itemconfig(successTextNov, text = '')
+    canvas.itemconfig(successText, text = '')
+
+    for i in range(popSize):
+        canvas.delete(rockets[i].visual)
+        canvasNov.delete(rocketsNov[i].visual)
+        canvasRand.delete(rocketsRand[i].visual)
+
+# def log_generation():
+#     global log
+#     global generationCounter
+
+#     global rockets
+#     global rocketsNov
+#     global rocketsRand
+
+#     log.write('standard, {}, {}, {}, {}, {}, {}\n'.format((generationCounter, rockets[i].x1, rockets[i].y1), (rockets[i].startX, rockets[i].startY), (endPoint[0], endPoint[1]), rockets[i].hit_target))
+#     log.write('novelty, {}, {}, {}, {}, {}, {}\n'.format((generationCounter, rockets[i].x1, rockets[i].y1), (rockets[i].startX, rockets[i].startY), (endPoint[0], endPoint[1]), rockets[i].hit_target))
+#     log.write('random, {}, {}, {}, {}, {}, {}\n'.format((generationCounterrockets[i].x1, rockets[i].y1), (rockets[i].startX, rockets[i].startY), (endPoint[0], endPoint[1]), rockets[i].hit_target))
+        
+
+generationCounter = 1
 rockets = []
 rocketsNov = []
 rocketsRand = []
@@ -138,18 +277,15 @@ genePool = []
 genePoolNov = []
 genePoolRand = []
 
-successful = False
-successfulNov = False
-successfulRand = False
+successful = {}
+successful['Rand'] = 0
+successful['Standard'] = 0
+successful['Nov'] = 0
+success = False
 
 popSize = 20
 lifespan = 550
-generationCounter = 1
 
-# original
-# endPoint = (250, 50)
-
-# custom
 endPoint = (50,50)
 
 root = Tk()
@@ -205,27 +341,10 @@ visualObstacleRand2 = canvasRand.create_rectangle(0, 100, 150, 110, fill = "whit
 visualObstacleRand3 = canvasRand.create_rectangle(140, 110, 150, 250, fill = "white")
 
 
+initialize()
 
-print('visualObstacle: {}'.format(type(visualObstacle)))
 
-for i in range(popSize):
-    newDNA = []
-    newDNANov = []
-    newDNARand = []
-
-    for j in range(lifespan):
-        newDNA.append(random.uniform(-10, 10))
-        newDNANov.append(random.uniform(-10, 10))
-        newDNARand.append(random.uniform(-10,10))
-
-    newRocket = rocket(canvas, newDNA)
-    newRocketNov = rocket(canvasNov, newDNANov)
-    newRocketRand = rocket(canvasRand, newDNARand)
-    rockets.append(newRocket)
-    rocketsNov.append(newRocketNov)
-    rocketsRand.append(newRocketRand)
-
-while 1 and not successful and not successfulNov:
+while 1 and sum(successful.values()) < 100:
     #run through simulation
     for i in range(lifespan):
         all_stuck = True
@@ -242,10 +361,14 @@ while 1 and not successful and not successfulNov:
                 root.update()
 
                 all_stuck = False
+            
             if rockets[j].hit_target == True:
-                successful = True
+                successful['Standard'] += 1
                 canvas.itemconfig(successText, text = 'SUCCESS')
-                input()
+                print('standard wins! - generation {}'.format(generationCounter))
+                success = True
+                break
+
             if rocketsNov[j].stuck == False:
                 canvasNov.delete(rocketsNov[j].visual)
                 rocketsNov[j].draw(canvasNov, i)
@@ -255,10 +378,13 @@ while 1 and not successful and not successfulNov:
                 root.update()
 
                 all_stuckNov = False
+            
             if rocketsNov[j].hit_target == True:
-                successfulNov = True
+                successful['Nov'] += 1
                 canvasNov.itemconfig(successTextNov, text = 'SUCCESS')
-                input()
+                print('novelty wins! - generation {}'.format(generationCounter))
+                success = True
+                break
 
             if rocketsRand[j].stuck == False:
                 canvasRand.delete(rocketsRand[j].visual)
@@ -269,16 +395,21 @@ while 1 and not successful and not successfulNov:
                 root.update()
 
                 all_stuckRand = False
+            
             if rocketsRand[j].hit_target == True:
-                successfulRand = True
+                successful['Rand'] += 1
                 canvasRand.itemconfig(successTextRand, text = 'SUCCESS')
-                input()
-
+                print('random wins! - generation {}'.format(generationCounter))
+                success = True
+                break
 
         if (all_stuck == False or all_stuckNov == False or all_stuckRand == False):
             time.sleep(0.01)
 
-    time.sleep(1)
+        if(success):
+            break
+
+    
 
     # calc novelty
     calcNovelty(rocketsNov)
@@ -287,15 +418,24 @@ while 1 and not successful and not successfulNov:
     for i in range(popSize):
         for j in range(rockets[i].calcFit()):
             genePool.append(rockets[i].dna)
-        for j in range(rocketsNov[i].calcNovelty()):
+        for j in range(rocketsNov[i].calcFit()):
             genePoolNov.append(rocketsNov[i].dna)
-        # genePoolRand.append(rocketsRand[i].dna)
+
+    for i in range(popSize):
+        rockets[i].log()
+        rocketsNov[i].log()
+        rocketsRand[i].log()
+    time.sleep(1)
+    
+    if (success):
+        reset_canvas()
+        initialize()
+        continue
 
     #create new population
     for i in range(popSize):
         newDNA = []
         newDNANov = []
-        # newDNARand = []
 
         parent1 = random.choice(genePool)
         parent2 = random.choice(genePool)
@@ -303,17 +443,11 @@ while 1 and not successful and not successfulNov:
         parentNov1 = random.choice(genePoolNov)
         parentNov2 = random.choice(genePoolNov)
 
-        # parentRand1 = random.choice(genePoolRand)
-        # parentRand2 = random.choice(genePoolRand)
-
         while parent1 == parent2:
             parent2 = random.choice(genePool)
 
         while parentNov1 == parentNov2:
             parentNov2 = random.choice(genePoolNov)
-
-        # while parentRand1 == parentRand2:
-        #     parentRand2 = random.choice(genePoolRand)
 
         for j in range(lifespan):
             parents = [parent1[j], parent2[j]]
@@ -322,9 +456,6 @@ while 1 and not successful and not successfulNov:
             parentsNov = [parentNov1[j], parentNov2[j]]
             _nov = random.choice(parentsNov)
             newDNANov.append(_nov)
-            # parentsRand = [parentRand1[j], parentRand2[j]]
-            # _rand = random.choice(parentsRand)
-            # newDNARand.append(_rand)
 
         #mutate
         if random.randint(0, 2) == 0:
@@ -338,12 +469,6 @@ while 1 and not successful and not successfulNov:
                 randIndex = random.randint(0, lifespan - 1)
                 newDNANov.pop(randIndex)
                 newDNANov.insert(randIndex, random.uniform(-10, 10))
-        
-        # if random.randint(0, 2) == 0:
-        #     for j in range(math.floor(lifespan / 20)):
-        #         randIndex = random.randint(0, lifespan - 1)
-        #         newDNARand.pop(randIndex)
-        #         newDNARand.insert(randIndex, random.uniform(-10, 10))
 
         rockets[i].reset(canvas, newDNA)
         rocketsNov[i].reset(canvasNov, newDNANov)
@@ -361,3 +486,5 @@ while 1 and not successful and not successfulNov:
     canvas.itemconfig(generationText, text = ("generation " + str(generationCounter)))
     canvasNov.itemconfig(generationTextNov, text = ("generation " + str(generationCounter)))
     canvasRand.itemconfig(generationTextRand, text = ("generation " + str(generationCounter)))
+
+print(successful)
